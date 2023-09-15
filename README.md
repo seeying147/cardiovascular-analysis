@@ -1,4 +1,4 @@
-# <img src="https://github.com/seeying147/Cardiovascular-Disease-Analysis/assets/144315315/a1de2db0-5e76-4ae8-b9dd-a368c26dac23" width="200" height="150"> Cardiovascular Disease Analysis
+# <img src="https://github.com/seeying147/cardiovascular-analysis/assets/144315315/bba359d5-c3c5-4f21-bda8-9c3e457ad3b7" width="200" height="150"> Cardiovascular Disease Analysis
 ## Description
 This project aims to look into the data of cardiovascular patients using R Programming. Through the use of patients' data, it can help us to determine significant factors contributing to cardiovascular disease as well as to have an understanding of how BMI might play a part in increasing the risk of contracting this disease. Every aspect of this project is a sample code which shows how to do the following:
 
