@@ -1,0 +1,317 @@
+---
+title: "Cardiovascular Disease (CVD), Physical Measurements, Habits & Vitals"
+output: 
+  bookdown::html_document2
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Introduction
+
+Cardiovascular diseases (CVDs) are a group of disorders of the heart and blood vessels. It is the leading cause of death globally (32% of all deaths worldwide) and is estimated to result in 17.9 million deaths annually. The body mass index(BMI) of a person categorizes the weight category they fall under using their height and weight. Body Mass Index (BMI) screens for weight categories that may lead to health problems, but it does not diagnose the body fatness or health of an individual.
+
+In this project, we added a new variable ‘BMI’ to be our main variable of interest by using existing variables, weight and height. This new dataset containing the BMI of patients with cardiovascular disease aged 39-64 will be used, with other variables such as their glucose level. Based on this dataset, we seek to answer these probing questions regarding the risk of other factors based on the BMI of CVD patients:
+
+1. Does the blood pressure of the CVD patients affect the BMI?  
+2. Is the BMI of CVD patients dependent on their cholesterol level?
+3. Is the BMI of CVD patients dependent on their glucose level?
+4. Is the BMI of CVD patients dependent on their alcohol intake?
+5. Does the BMI of CVD patients depend on whether they smoke?
+6. Is there a single most important continuous variable that is affecting BMI?
+
+This report will cover the data descriptions and analysis using R language. We will be performing statistical analysis in accordance with our research objectives and emerge to an overall verdict with evidence from our findings.
+
+# Data Description
+The dataset was obtained from the online data science platform Kaggle and is titled “Cardiovascular Disease dataset”. There are no missing values in the dataset. 
+
+## Preliminary Data Cleaning
+Before proceeding with data analysis, we first performed a preliminary data cleaning to ensure that:
+
++ Irrelevant columns (eg: id, age and gender) are eliminated
++ Patients without cardiovascular disease are excluded 
++ Patients’ heights are measured in meters instead of centimeters when calculating BMI
+
+```{r}
+library(dplyr)
+library(ggplot2)
+library(gridExtra)
+disease=read.table("C:/Users/Owner/Downloads/cardio_train.csv",sep=";",header=T)
+disease=filter(disease, cardio==1)
+disease=select(disease,-c(cardio,id,gender,age))
+```
+
+We also created a BMI variable using the height and weight observations of the patient.
+```{r}
+#BMI
+disease=mutate(disease,BMI=weight/(height/100)^2)
+summary(disease)
+```
+After the preparation, 34979 observations (patients) with 10 variables are retained for analysis:
+
+1. Height: Height of patients in cm
+2. Weight: Weight of patients in kg
+3. BMI: body mass index of the patient, calculated by taking the weight (in kilograms) divided by the height (convert from centimeters to meters by dividing by 100) squared. 
+4. ap_hi: systolic blood pressure of patient 
+5. ap_lo: diastolic blood pressure of patient
+6. cholesterol: cholesterol levels of the patient, 1 refers to normal, 2 refers to above normal and 3 refers to well above normal. 
+7. gluc: glucose levels of the patient, 1 refers to normal, 2 refers to above normal and 3 refers to well above normal. 
+8. smoke: whether or not the patient smokes, 0 indicates non-smoker and 1 indicates smoker
+9. alco: alcohol intake, 0 indicates non-alcoholic and 1 indicates alcoholic 
+10. active: physical activity of patient, 0 indicates non-active and 1 indicates active
+
+# Description and Cleaning of Dataset
+In this segment, we will investigate the data in greater detail and analyze the variables to look for possible outliers. We will investigate each variable individually to look for possible outliers and transformation may be carried out in order to avoid highly skewed data if required. 
+
+First, we will filter away patients that do not have cardiovascular disease since we only wish to investigate the correlation between the different variables with the BMI of only CVD patients. 
+
+## Summary statistic for the main variable of interest,  BMI = weight(kg)/height(m)^2
+The plots below show the overall distribution of BMI, our main variable of interest.
+```{r,fig.align='center'}
+par(mfrow=c(1,2))
+boxplot(disease$BMI,main="Boxplot of BMI")
+hist(disease$BMI, main="Histogram of BMI")
+```
+
+It appears that the main variable BMI is highly skewed, hence we apply a log-transformation(base e) to the variable. 
+
+```{r gg-oz-plot1,fig.cap="Analysis on log(BMI)",fig.align='center'}
+#logBMI
+disease=mutate(disease,log(BMI))
+par(mfrow=c(1,2))
+boxplot(log(disease$BMI),main="Boxplot of log(BMI)")
+hist(disease$`log(BMI)`, main="Histogram of log(BMI)")
+```
+From Figure \@ref(fig:gg-oz-plot1), the log(BMI) has a significant number of outliers. Hence we will proceed to investigate height and weight in an attempt to make the data more symmetric with minimal outliers.
+
+Based on the summary statistics of height and weight, we observe that when the minimum age is 39 years old, the minimum height is 55 cm and minimum weight is 10kg which is an error. The maximum height is 250 cm and the maximum weight is 200 kg, which might be irrelevant when generalizing data. 
+
+```{r}
+summary(disease$height)
+summary(disease$weight)
+```
+
+Since BMI is related to height and weight, those errors can explain the outliers in \@ref(fig:gg-oz-plot1). To deal with these errors, we check for any outliers for both height and weight.
+
+```{r,fig.align='center'}
+#boxplot of height and weight
+par(mfrow=c(1,2))
+boxplot(disease$height,main="Boxplot of height")
+boxplot(disease$weight,main="Boxplot of weight")
+```
+
+We use boxplot rule to remove any outliers for height and weight. 
+```{r gg-oz-plot2,fig.cap="Boxplots of height and weight after removing outliers",fig.align='center'}
+par(mfrow=c(1,2))
+#Removing outliers for height
+Q1 <- quantile(disease$height, .25)
+Q3 <- quantile(disease$height, .75)
+IQR=IQR(disease$height)
+disease <- subset(disease, disease$height>(Q1-1.5*IQR)  & disease$height<(Q3+1.5*IQR))
+boxplot(disease$height,main="Boxplot of height")
+
+#Removing outliers for weight
+Q1 <- quantile(disease$weight, .25)
+Q3 <- quantile(disease$weight, .75)
+IQR=IQR(disease$weight)
+disease <- subset(disease, disease$weight>(Q1-1.5*IQR)  & disease$weight<(Q3+1.5*IQR))
+boxplot(disease$weight,main="Boxplot of weight")
+```
+After removing the outliers for the height and weight boxplot (See Figure \@ref(fig:gg-oz-plot2)), we analyzed the outliers in log(BMI) boxplot which is shown below (See Figure \@ref(fig:gg-oz-plot3)). The dataset seems to have lesser outliers as compared to the initial log(BMI) boxplot. We shall proceed with the rest of the report using this trimmed dataset. 
+
+```{r gg-oz-plot3,fig.cap="Analysis on log(BMI) after removing outliers",fig.align='center'}
+par(mfrow=c(1,2))
+#logBMI after removing outliers
+boxplot(disease$`log(BMI)`,main="Boxplot of log(BMI)")
+hist(disease$`log(BMI)`, main="Histogram of log(BMI)")
+summary(disease$`log(BMI)`)
+```
+
+## Summary statistic for ap_lo(diastolic) and ap_hi(systolic)
+In some cases, the diastolic blood pressure is higher than the systolic blood pressure, which is incorrect. We observe that there are 910 inaccurate records in terms of blood pressure. Thus, subset() is used to only include rows where ap_lo(diastolic)<ap_hi(systolic). The following plots (See Figure \@ref(fig:gg-oz-plot4)) show the boxplots for ap_hi and ap_lo after removing all the inaccurate blood pressure records. 
+```{r}
+sum(disease$ap_lo>disease$ap_hi)
+# 910 inaccurate records
+```
+```{r gg-oz-plot4,fig.cap="Boxplots of ap_hi and ap_lo", fig.align='center'}
+#ap_lo<ap_hi
+par(mfrow=c(1,2))
+disease <- subset(disease, disease$ap_lo<disease$ap_hi)
+boxplot(disease$ap_hi,main="Boxplot of ap_hi")
+boxplot(disease$ap_lo, main="Boxplot for ap_lo")
+```
+Furthermore, ap_lo also contains negative values. We use the boxplot rule to remove the outliers, including all negative values. The figure below (See Figure \@ref(fig:gg-oz-plot5)) shows the boxplots of ap_hi and ap_lo after removing the outliers.
+
+```{r gg-oz-plot5,fig.cap="Boxplots of ap_hi and ap_lo after removing outliers",fig.align='center'}
+par(mfrow=c(1,2))
+#Removing outliers for ap_hi
+Q1 <- quantile(disease$ap_hi, .25)
+Q3 <- quantile(disease$ap_hi, .75)
+IQR=IQR(disease$ap_hi)
+disease <- subset(disease, disease$ap_hi>(Q1-1.5*IQR)  & disease$ap_hi<(Q3+1.5*IQR))
+boxplot(disease$ap_hi,main="Boxplot of ap_hi")
+
+#Removing outliers for ap_lo
+Q1 <- quantile(disease$ap_lo, .25)
+Q3 <- quantile(disease$ap_lo, .75)
+IQR=IQR(disease$ap_lo)
+disease <- subset(disease, disease$ap_lo>(Q1-1.5*IQR)  & disease$ap_lo<(Q3+1.5*IQR))
+boxplot(disease$ap_lo,main="Boxplot of ap_lo")
+```
+
+## Identifying Outliers in Categorical and Binary variables 
+Figure \@ref(fig:gg-oz-plot6) shows the bar plot for categorical variables including “cholesterol”, “gluc” and binary variables including “smoke”, “alco”, “active”. No outlying values are removed since there are no outliers in all bar plots. 
+
+```{r gg-oz-plot6,fig.cap="Bar plots of categorical and binary variables",fig.align='center'}
+par(mfrow=c(2,3))
+#barplot for categorical
+counts <- table(disease$cholesterol)
+barplot(counts, xlab="cholesterol",ylim=c(0,30000),col=c("blue","red","green"))
+
+counts1 <- table(disease$gluc)
+barplot(counts1, xlab="gluc",ylim=c(0,30000),col=c("blue","red","green"))
+
+counts2 <- table(disease$smoke)
+barplot(counts2, xlab="smoke",ylim=c(0,30000),col=c("orange","blue"))
+
+counts3 <- table(disease$alco)
+barplot(counts3, xlab="alco",ylim=c(0,30000),col=c("orange","blue"))
+
+counts4 <- table(disease$active)
+barplot(counts4, xlab="active",ylim=c(0,30000),col=c("orange","blue"))
+```
+From Figure \@ref(fig:gg-oz-plot6), most patients have normal cholesterol and normal glucose level. A significant number are non-smoker, non-alcoholic and active. 
+
+## Final Dataset for Analysis
+Based on the above analysis, this dataset is further reduced to 30824 observations with log-transformation applied to BMI, selecting ap_lo(diastolic)<ap_hi(systolic) rows and removal of outliers for ap_lo and ap_hi. 
+
+# Statistical Analysis
+## Correlation matrix between log(BMI) and other Continuous Variables 
+```{r gg-oz-plot7,fig.cap="Correlation plot",fig.align='center'}
+#Correlation scatter plot
+disease1<-select(disease,-c(height,weight))
+library(PerformanceAnalytics)
+chart.Correlation(disease1, pch=10)
+```
+
+Scatter plots are useful to help study the possible relationships between a patients’ BMI and various other indicators. From the plots (See Figure \@ref(fig:gg-oz-plot7)), it appears that log(BMI) is more highly correlated to ap_hi, ap_lo and cholesterol than to other variables. 
+
+Among the other indicators, there are a few  observations from this tabulation:
+
++ ap_hi and ap_lo have the strongest correlation
++ log(BMI) and indicators ap_hi, ap_lo and cholesterol are positively correlated (= 0.17,=0.16,=0.15 respectively) 
++ log(BMI) is negatively correlated to smoke (=-0.031)
+
+We shall perform some statistical tests to confirm some of our observations in the next section.
+
+## Statistical Tests
+### Relation between BMI and cholesterol
+Cholesterol is a waxy, fat like substance found in the cells of our bodies. BMI is usually associated with weight and hence body fat in the body. Therefore in this section, we aim to answer the question “Is the BMI of CVD patients dependent on their cholesterol level?” Patients were categorized under 3 sub categories(1:normal, 2: above normal, 3: well above normal). We plot the boxplot as shown below: 
+```{r gg-oz-plot8,fig.cap="Boxplot between log(BMI) and cholesterol",fig.align='center'}
+#Relation between cholesterol and BMI
+boxplot(disease$`log(BMI)`~disease$cholesterol,col="light gray",ylab="log(BMI)",xlab="Cholesterol Level")
+```
+
+From Figure \@ref(fig:gg-oz-plot8), it is straightforward to see that the difference in log(BMI) across all 3 cholesterol levels is not significant. An analysis of variance (ANOVA) is used to test the equality of the means. We test, 
+<center>
+$H_{0}$: $\psi_1$ =$\psi_2$=$\psi_3$ against $H_{1}$: not all $\psi_i$ are equal.
+</center>
+
+```{r}
+aov(disease$`log(BMI)`~factor(disease$cholesterol))
+summary(aov(disease$`log(BMI)`~factor(disease$cholesterol)))
+```
+The ANOVA test returns a p-value of <2e-16, which shows that the means are different at a significance level of 0.05. Therefore we conclude that the BMI of CVD patients depends on their cholesterol level. The pairwise t-tests show that all 3 mean log(BMI) are different from each other.
+
+```{r}
+pairwise.t.test(disease$`log(BMI)`,disease$cholesterol,p.adjust.method = "none")
+```
+
+### Relation between BMI and glucose
+In this section, we want to find out whether the difference in glucose level will affect BMI.  An analysis of variance (ANOVA) test will be conducted to determine whether log(BMI) is different at each glucose level, since it is a categorical variable. The following plot illustrates the distributions of log(BMI) among the three glucose levels (1: normal, 2: above normal, 3: well above normal).
+```{r gg-oz-plot9,fig.cap="Boxplot between log(BMI) and glucose",fig.align='center'}
+#Relation between glucose and BMI
+boxplot(disease$`log(BMI)`~disease$gluc,col="light gray",ylab="log(BMI)",xlab="Glucose Level")
+```
+
+
+From Figure \@ref(fig:gg-oz-plot9), we see that the spread of log(BMI) is similar for all glucose levels. Hence, the ANOVA test is appropriate for testing the equality of the means. We test, 
+<center>
+$H_{0}$: $\psi_1$ =$\psi_2$=$\psi_3$ against $H_{1}$: not all $\psi_i$ are equal.
+</center>
+
+```{r}
+aov(disease$`log(BMI)`~factor(disease$gluc))
+summary(aov(disease$`log(BMI)`~factor(disease$gluc)))
+```
+The ANOVA test returns a p-value of <2e-16, which shows that the means are different at a significance level of 0.05. Therefore we conclude that the BMI of CVD patients depends on their glucose level. The pairwise t-tests show that all 3 mean log(BMI) are different from each other. 
+```{r}
+pairwise.t.test(disease$`log(BMI)`,disease$gluc,p.adjust.method = "none")
+```
+### Relation between BMI and smoke
+In this section, we try to answer “Does the BMI depend on whether CVD patients smoke?” We group patients into 2 categories, based on whether they smoke (0:non-smoker, 1:smoker). The boxplot of log(BMI) is plotted below. 
+```{r gg-oz-plot10,fig.cap="Boxplot between log(BMI) and smoke",fig.align='center'}
+#Relation between BMI and smoke
+boxplot(disease$`log(BMI)`~disease$smoke,col="light gray",ylab="log(BMI)",xlab="Smoke")
+```
+
+
+To determine the difference in log(BMI) between patients who smoke and don’t smoke, we use a t-test approach to construct a 95% confidence interval (CI). We first determine that the variances of log(BMI) are different in the two groups (non-smoker and smoker), p-value=8.812e-11. Hence, a Welch two-sample t-test is used to construct a 95% confidence interval for the difference in mean log(BMI), 95% CI: [0.01295, 0.02566]. This CI in log-scale translates into a 95% CI for the ratio in geometric means of the patient’s BMI between smoker and non-smoker of [1.01,1.03]. 
+```{r}
+var.test((disease$`log(BMI)`[disease$smoke==0]), (disease$`log(BMI)`[disease$smoke==1]))
+t.test(disease$`log(BMI)`[disease$smoke==0], disease$`log(BMI)`[disease$smoke==1],var.equal=FALSE) 
+```
+From the results, we can conclude that the patient’s BMI depends on whether the patient smokes.
+
+### Relation between BMI and alcohol
+In this section, we try to answer the question “Does the BMI depend on the CVD patients’ alcohol intake?” Thus, we are interested in knowing the difference in BMI between alcoholic and non-alcoholic patients. We group patients into 2 categories, based on alcohol intake (0:non-alcoholic, 1:alcoholic). The boxplot of log(BMI) is plotted below. 
+```{r gg-oz-plot11,fig.cap="Boxplot between log(BMI) and alcohol",fig.align='center'}
+boxplot(disease$`log(BMI)`~disease$alco,col="light gray",ylab="log(BMI)",xlab="Alcohol intake")
+```
+
+
+From the diagram, we observed a slight gap between alcoholic and non-alcoholic patients. Further statistical tests are conducted to support this observation. We first determine that the variances of log(BMI) are different in the two groups (0 and 1) with p-value=0.02442. Hence, a Welch two-sample t-test is used to test the difference in mean log(BMI). The results are shown below: 
+```{r}
+var.test((disease$`log(BMI)`[disease$alco==0]), (disease$`log(BMI)`[disease$alco==1]))
+t.test(disease$`log(BMI)`[disease$alco==0], disease$`log(BMI)`[disease$alco==1],alternative="less", var.equal=FALSE) 
+```
+
+Variance Test:
+
++ $H_{0}$: log(BMI) variances for non-alcoholic and alcoholic patients are equal 
++ $H_{1}$: log(BMI) variances for non-alcoholic and alcoholic patients are not equal
+
+At a significance level of 0.05, we reject the null hypothesis and conclude that the variances of the two samples are not equal. 
+
+T-Test:
+
++ $H_{0}$: The mean log(BMI) of non-alcoholic patients is equal to mean log(BMI) of alcoholic patients
++ $H_{1}$: The mean log(BMI) of non-alcoholic patients is less than the mean log(BMI) of alcoholic patients
+
+Using a sided t-test with unequal variances, the p-value= 2.484e-05. Since p-value<0.05, we reject the null hypothesis at a significance level of 0.05, and conclude that the mean log(BMI) of non-alcoholic patients is less than the mean log(BMI) of alcoholic patients.
+
+### The single most important continuous variable that is affecting BMI?
+We perform a simple linear regression analysis to determine which blood pressure variables (ap_hi or ap_lo) could be used to model log(BMI) in a linear fashion.
+<center>
+log(BMI) = $\beta_0$ + $\beta_1$X + $\epsilon$
+</center>
+where X is either ap_hi or ap_lo. The results are summarized in a table below. By comparing the R-squared and the residual plot, we can conclude that ap_hi is a more important variable to model log(BMI) using a simple linear model.
+
+```{r,fig.align='center'}
+knitr::include_graphics("C:/Users/Owner/OneDrive - Nanyang Technological University/Pictures/linear analysis.png")
+```
+
+# Conclusion and Discussion
+We studied and analyzed the health conditions of CVD patients. As mentioned, CVD is the one of the leading causes of death globally, associated with health risks pertaining to the blood vessels and heart . Hence, we take the BMI of CVD patients in order to identify any relations to other underlying conditions that will also lead to increased risks of this disease. In this report, we attempt to answer primary questions related to the BMI of these CVD patients with their existing health statuses.
+
+We conclude that: 
+
+- For blood pressure, diastolic (ap_lo) blood pressure statistically affects the patient’s BMI more than systolic (ap_hi) blood pressure. 
+- The BMI depends on the cholesterol and glucose level of CVD patients. 
+- The BMI depends on whether the CVD patient smokes. 
+- The BMI is dependent on the alcohol level of CVD patients
+
+It is to recall that since our main variable BMI is highly skewed, we apply a log-transformation to the variable. Additionally, we found that by using scatter plots, they are useful to help study the possible relationships between a patients’ BMI and various other indicators more clearly. 
+
+Although the results provided us with more insights, it is to note that the information is provided by patients and are only recorded at that specific time during the medical examination. Hence may be subjective and cause accuracy problems. However, with the advancement of technology, the method of collecting data may be more efficient. To make a stronger and more accurate conclusion, deeper and more comprehensive analysis can be done with the help of more advanced analytical tools.
