@@ -16,7 +16,7 @@ The project is created with RStudio v4.1.2 (Install [here](https://posit.co/prod
 ## Setup
 To run this project:
 * Download cardio_data.csv to view the original dataset
-* Download Cardio_Project.Rmd and open the document in RStudio
+* Download index.Rmd and open the document in RStudio
 * In RStudio, install 4 packages using the following command:
 ```{r}
 install.packages(dplyr)
@@ -24,7 +24,7 @@ install.packages(ggplot2)
 install.packages(gridExtra)
 install.packages(PerformanceAnalytics)
 ```
-* In Cardio_Project.Rmd, edit the file path in read.table("filepath", sep=";",header=T). 
+* In index.Rmd, edit the file path in read.table("filepath", sep=";",header=T). 
 * Click "Knit" to view the project. 
 
 ## License
